@@ -6,13 +6,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
-const SA = JSON.parse(process.env.GSA_KEY_JSON);
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN || "";
+const SA = process.env.GSA_KEY_JSON ? JSON.parse(process.env.GSA_KEY_JSON) : null;
 
 app.post("/analyze", async (req, res) => {
   try {
     if (req.headers["x-webhook-token"] !== WEBHOOK_TOKEN) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (!SA) {
+      return res.status(500).json({ error: "Missing GSA_KEY_JSON" });
     }
 
     const { spreadsheetId, range } = req.body;
@@ -34,7 +38,7 @@ app.post("/analyze", async (req, res) => {
 
     return res.json({
       rows: values.length,
-      data: values.slice(0, 10)
+      data: values.slice(0, 10),
     });
 
   } catch (err) {
@@ -42,6 +46,9 @@ app.post("/analyze", async (req, res) => {
   }
 });
 
-app.listen(10000, () => {
-  console.log("Server running on port 10000");
+app.get("/ping", (req, res) => {
+  res.json({ ok: true, time: new Date().toISOString() });
 });
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log("Server running on port", PORT));
